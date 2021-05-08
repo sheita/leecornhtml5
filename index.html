@@ -1,0 +1,256 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="apple-touch-icon-precomposed" href="images/flapicon.png" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=0.75" />
+    <style>
+      html, body {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+      }
+      html {
+        background: #1a1a1a; // Dark Grey
+      }
+      body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      canvas {
+        background: white;
+        image-rendering: pixelated;
+        image-rendering: optimizespeed;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas>Flappy Lee ne fonctionne que avec les navigateurs HTML5</canvas>
+
+    <script type="text/javascript">
+      // Propriétés du canvas
+      var canvas = document.querySelector("canvas");
+      canvas.width = "800";
+      canvas.height = "500";
+      var c = canvas.getContext("2d");
+      var width = canvas.width;
+      var height = canvas.height;
+
+      var xclouds = 0;
+
+
+      // Chargement des images
+      var clouds = new Image();
+      clouds.src = "images/clouds.png";
+      var loopclouds = new Image();
+      loopclouds.src = "images/loopclouds3.png";
+      var flap = new Image();
+      flap.src = "images/flapflap.png";
+      var intro = new Image();
+      intro.src = "images/intro.png";
+      var perdu = new Image();
+      perdu.src = "images/perdu.png"
+
+
+
+      function animate() {
+        requestAnimationFrame(animate);
+        c.clearRect(0,0,canvas.width,canvas.height);
+
+        c.drawImage(clouds, 0, 0, 800, 500);
+        //c.drawImage(loopclouds, xclouds, 0, 1778, height);
+        //c.drawImage(loopclouds, xclouds+1778, 0, 1778, height);
+
+        game.time += 1;
+
+        switch(game.state) {
+        case 0: // Acceuil du jeu
+          c.drawImage(intro, 0, 0, width, height);
+          break;
+
+        case 1: // Prêt à démarrer
+          licorne.y = licorne.y + Math.cos(game.time/30);
+          licorne.afficher();
+          break;
+
+        case 2: // Jeu
+          //xclouds-=1;
+          //if (xclouds<=-1778) {
+          //  xclouds = 0;
+          //}
+
+          licorne.y = (1/4)*game.time*game.time-10*game.time+licorne.yLastTap;
+          if (licorne.y>height+licorne.taille || licorne.y<0-licorne.taille) {
+            game.state = 3;
+          }
+          licorne.afficher();
+
+          pipes.displayPipes();
+
+          check.score();
+          //textSize(50);
+          //text(game.score, 95*width/100, 55);
+          c.font ="bold 50px sans-serif";
+          c.fillStyle = "white";
+          c.textAlign = "center";
+          c.fillText(game.score, 95*width/100, 55);
+
+          pipes.moving();
+
+          pipes.checkIfNotDead();
+          pipes.checkIfPipeAway();
+
+          game.fullTime += 1;
+          game.decreasingHoleHeight();
+          break;
+
+        case 3: // Perdu & Score
+          game.fullTime += 1;
+          c.drawImage(perdu, 0, 0-83, width, height);
+          c.font ="bold 20px sans-serif";
+          c.fillStyle = "white";
+          c.textAlign = "center";
+          c.fillText("SCORE : " + game.score, width/2, (15*height)/28);
+          console.log("Score:" + game.score);
+          break;
+        }
+      }
+
+      canvas.addEventListener("mousedown", function (event) {
+        keyPressed();
+      });
+      document.addEventListener('keydown', function(e){
+        keyPressed();
+      });
+
+
+      var game = {
+        state: 0,
+        time: 0,
+        speed: 7,
+        holeHeight: 200,
+        score: 0,
+        scoreStep: 1,
+        timeWhenLost: 0,
+        canClickAfterDeath: false,
+        init: function() {
+          pipes.initPipes();
+          this.time = 0;
+          this.numberOfPipes = 0;
+          licorne.x = width/5;
+          licorne.y = height/2;
+          this.score = 0;
+          this.scoreStep = 1;
+          this.holeHeight = 200;
+          this.fullTime = 0;
+        },
+        fullTime: 0,
+        decreasingHoleHeight: function() {
+          if(game.fullTime % 60 == 0) {
+            game.holeHeight -= 1;
+          }
+        }
+      }
+
+      var licorne = {
+        x: 0,
+        y: 0,
+        taille: 34,
+        afficher: function() {
+          c.drawImage(flap, this.x-this.taille/2, this.y-this.taille/2, this.taille, this.taille);
+        },
+        yLastTap: 0
+      }
+
+      function keyPressed() {
+        switch(game.state) {
+        case 0: // Acceuil du jeu
+          game.state = 1;
+          break;
+
+        case 1: // Prêt à démarrer
+          game.state = 2;
+          licorne.yLastTap = licorne.y;
+          game.time = 0;
+          break;
+
+        case 2: // Jeu
+          game.state = 2;
+          licorne.yLastTap = licorne.y;
+          game.time = 0;
+          break;
+
+        case 3: // Perdu & Score
+          if(game.timeWhenLost+20 < game.fullTime) {
+            game.state = 1;
+            game.init();
+            break;
+          }
+        }
+      }
+
+      var check = {
+        score: function() {
+          if(licorne.x > pipes.pipes[0].x) {
+            game.score = pipes.pipes[0].number;
+          }
+        }
+      }
+
+      var pipes = {
+        numberOf: 0,
+        pipes: [],
+        initPipes: function() {
+          this.numberOf = 0;
+          this.pipes = [];
+          for (var i=0; i<3; i++) {
+            this.numberOf += 1;
+            this.pipes.push({
+            number: this.numberOf,
+            x: 500 + 600 * this.numberOf,
+            hole: Math.floor(Math.random()) * ((height - game.holeHeight/2) - (game.holeHeight/2 + 20)) + (game.holeHeight/2 + 20)
+            });
+          }
+        },
+        moving: function() {
+          for (var i=0; i<3; i++) {
+            this.pipes[i].x -= game.speed;
+          }
+        },
+        displayPipes: function() {
+          c.fillStyle = "black";
+          for(var i=0; i<3; i++) {
+            c.fillRect(this.pipes[i].x,0,50,this.pipes[i].hole-game.holeHeight/2);
+            c.fillRect(this.pipes[i].x,this.pipes[i].hole+game.holeHeight/2,50,height-this.pipes[i].hole-game.holeHeight/2);
+          }
+          c.fillStyle = "black";
+        },
+        checkIfPipeAway: function() {
+          if(this.pipes[0].x < -200) {
+            this.pipes.splice(0,1);
+            this.numberOf += 1;
+            this.pipes.push({
+            number: this.numberOf,
+            x: 1600,
+            hole: Math.random() * ((height - game.holeHeight/2) - (game.holeHeight/2 + 20)) + (game.holeHeight/2 + 20)
+            });
+          }
+        },
+        checkIfNotDead: function() {
+          if(licorne.x > this.pipes[0].x-licorne.taille/2 && licorne.x < this.pipes[0].x+50+licorne.taille/2) {
+            if((licorne.y-licorne.taille/2 < this.pipes[0].hole - game.holeHeight/2) || (licorne.y+licorne.taille/2 > this.pipes[0].hole + game.holeHeight/2)) {
+              game.state = 3;
+              game.timeWhenLost = game.fullTime;
+            }
+          }
+        }
+      }
+
+      game.init();
+      animate();
+
+    </script>
+  </body>
+</html>
